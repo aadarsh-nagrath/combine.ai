@@ -207,32 +207,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
                     </div>
                   </div>
 
-                  {isActive && (
-                    <div className="flex flex-col gap-1 mb-2">
-                      <div className="w-full pl-9 pr-1 py-[1px]">
-                        <div className="h-10 w-full rounded-lg cursor-pointer transition-colors hover:bg-neutral-800 flex items-center px-3 py-1">
-                          <div className="flex-1 min-w-0 flex items-center justify-between">
-                            <div className="text-[14px] text-neutral-300 leading-[18px] truncate">
-                              {platform.name} - Embedded
-                            </div>
-                            <div className="flex gap-1">
-                              <Button
-                                size="sm"
-                                variant="ghost"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  onClosePlatform();
-                                }}
-                                className="h-6 w-6 p-0 hover:bg-red-600/20"
-                              >
-                                <X className="w-3 h-3" />
-                              </Button>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  )}
                 </div>
               );
             })}

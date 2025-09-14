@@ -33,32 +33,31 @@ function App() {
     };
   }, []);
 
-  const handleOpenPlatform = async (platform: AIPlatform) => {
+  const handleOpenPlatform = (platform: AIPlatform) => {
     console.log('Opening platform:', platform.name, platform.url);
     setIsLoading(true);
-    
-    // Use Electron's webContents to navigate the main window
-    if (window.electronAPI) {
-      try {
-        await window.electronAPI.navigateToURL(platform.url);
-        setActivePlatform(platform);
-      } catch (error) {
-        console.error('Failed to navigate:', error);
-        // Fallback to iframe
-        setActivePlatform(platform);
-      }
-    } else {
-      setActivePlatform(platform);
-    }
-    
+    setActivePlatform(platform);
     setIsLoading(false);
   };
 
   const handleClosePlatform = () => {
     setActivePlatform(null);
-    // Navigate back to the app's main page
-    if (window.electronAPI) {
-      window.electronAPI.navigateToApp();
+  };
+
+  const handleWebviewLoad = (event: any) => {
+    const webview = event.target;
+    if (webview) {
+      // Handle new window requests (for OAuth popups)
+      webview.addEventListener('new-window', (e: any) => {
+        console.log('New window requested:', e.url);
+        // Open OAuth popups in the same webview
+        webview.src = e.url;
+      });
+      
+      // Handle console messages for debugging
+      webview.addEventListener('console-message', (e: any) => {
+        console.log('Webview console:', e.message);
+      });
     }
   };
 
@@ -91,38 +90,21 @@ function App() {
       {/* Main Content Area */}
       <div className="flex-1 relative">
         {activePlatform ? (
-          <div className="h-full w-full bg-white">
-            <div className="h-12 bg-gray-100 border-b flex items-center justify-between px-4">
-              <div className="flex items-center space-x-3">
-                <div className="w-6 h-6 bg-blue-500 rounded"></div>
-                <span className="font-medium text-gray-700">{activePlatform.name}</span>
-                <span className="text-sm text-gray-500">({activePlatform.url})</span>
-              </div>
-              <div className="flex items-center space-x-2">
-                <button 
-                  onClick={() => window.open(activePlatform.url, '_blank')}
-                  className="px-3 py-1 bg-blue-500 text-white rounded hover:bg-blue-600"
-                >
-                  Open in Browser
-                </button>
-                <button 
-                  onClick={handleClosePlatform}
-                  className="px-3 py-1 bg-red-500 text-white rounded hover:bg-red-600"
-                >
-                  Back to App
-                </button>
-              </div>
-            </div>
-            <div className="h-[calc(100%-3rem)] bg-gray-100 flex items-center justify-center">
-              <div className="text-center">
-                <div className="text-lg font-medium text-gray-700 mb-2">
-                  Loading {activePlatform.name}...
-                </div>
-                <div className="text-sm text-gray-500">
-                  The AI platform should load in the main window above
-                </div>
-              </div>
-            </div>
+          <div className="h-full w-full">
+            <webview
+              src={activePlatform.url}
+              className="w-full h-full"
+              style={{ display: 'flex' }}
+              partition="persist:ai-platforms"
+              webpreferences="allowRunningInsecureContent,experimentalFeatures"
+              nodeintegration={false}
+              plugins={true}
+              preload=""
+              httpreferrer={activePlatform.url}
+              useragent="Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+              allowpopups={true}
+              onDidAttach={handleWebviewLoad}
+            />
           </div>
         ) : (
           <MainContent

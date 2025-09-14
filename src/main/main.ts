@@ -48,7 +48,7 @@ class AIWrapperApp {
         nodeIntegration: false,
         contextIsolation: true,
         preload: path.join(__dirname, 'preload.js'),
-        webSecurity: false, // Allow iframes to load external content
+        webviewTag: true, // Enable webview tag
       },
       titleBarStyle: process.platform === 'darwin' ? 'hiddenInset' : 'default',
       show: false,
