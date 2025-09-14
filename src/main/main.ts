@@ -48,6 +48,7 @@ class AIWrapperApp {
         nodeIntegration: false,
         contextIsolation: true,
         preload: path.join(__dirname, 'preload.js'),
+        webSecurity: false, // Allow iframes to load external content
       },
       titleBarStyle: process.platform === 'darwin' ? 'hiddenInset' : 'default',
       show: false,
@@ -168,6 +169,23 @@ class AIWrapperApp {
         return true;
       }
       return false;
+    });
+
+    // Main window navigation handlers
+    ipcMain.handle('navigate-to-url', async (event, url: string) => {
+      if (this.mainWindow) {
+        this.mainWindow.loadURL(url);
+      }
+    });
+
+    ipcMain.handle('navigate-to-app', async () => {
+      if (this.mainWindow) {
+        if (isDev()) {
+          this.mainWindow.loadURL('http://localhost:5173');
+        } else {
+          this.mainWindow.loadFile(path.join(__dirname, '../renderer/index.html'));
+        }
+      }
     });
   }
 

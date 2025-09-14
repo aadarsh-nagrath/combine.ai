@@ -16,6 +16,13 @@ contextBridge.exposeInMainWorld('electronAPI', {
   focusWindow: (windowId: string) => 
     ipcRenderer.invoke('focus-window', windowId),
 
+  // Main window navigation
+  navigateToURL: (url: string) => 
+    ipcRenderer.invoke('navigate-to-url', url),
+  
+  navigateToApp: () => 
+    ipcRenderer.invoke('navigate-to-app'),
+
   // Event listeners
   onWindowClosed: (callback: (windowId: string) => void) => {
     ipcRenderer.on('window-closed', (event, windowId) => callback(windowId));
@@ -43,6 +50,8 @@ declare global {
       closeAIWindow: (windowId: string) => Promise<boolean>;
       getOpenWindows: () => Promise<Array<{id: string, platform: string, url: string}>>;
       focusWindow: (windowId: string) => Promise<boolean>;
+      navigateToURL: (url: string) => Promise<void>;
+      navigateToApp: () => Promise<void>;
       onWindowClosed: (callback: (windowId: string) => void) => void;
       onMenuNewWindow: (callback: () => void) => void;
       onMenuSettings: (callback: () => void) => void;

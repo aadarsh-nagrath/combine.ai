@@ -15,31 +15,25 @@ import {
 
 interface SidebarProps {
   platforms: AIPlatform[];
-  openWindows: AIWindow[];
-  onOpenWindow: (platform: AIPlatform) => void;
-  onFocusWindow: (windowId: string) => void;
-  onCloseWindow: (windowId: string) => void;
+  activePlatform: AIPlatform | null;
+  onOpenPlatform: (platform: AIPlatform) => void;
+  onClosePlatform: () => void;
   isLoading: boolean;
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({
   platforms,
-  openWindows,
-  onOpenWindow,
-  onFocusWindow,
-  onCloseWindow,
+  activePlatform,
+  onOpenPlatform,
+  onClosePlatform,
   isLoading
 }) => {
   const [expandedItems, setExpandedItems] = useState<Set<string>>(new Set());
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [searchValue, setSearchValue] = useState("");
 
-  const isWindowOpen = (platformId: string) => {
-    return openWindows.some(w => w.platform === platformId);
-  };
-
-  const getOpenWindow = (platformId: string) => {
-    return openWindows.find(w => w.platform === platformId);
+  const isPlatformActive = (platformId: string) => {
+    return activePlatform?.id === platformId;
   };
 
   const toggleExpanded = (itemKey: string) => {
@@ -69,13 +63,13 @@ export const Sidebar: React.FC<SidebarProps> = ({
         {/* Navigation Icons */}
         <div className="flex flex-col gap-2 w-full items-center">
           {platforms.slice(0, 6).map((platform) => {
-            const isOpen = isWindowOpen(platform.id);
+            const isActive = isPlatformActive(platform.id);
             return (
               <button
                 key={platform.id}
-                onClick={() => onOpenWindow(platform)}
+                onClick={() => onOpenPlatform(platform)}
                 className={`flex items-center justify-center rounded-lg size-10 min-w-10 transition-colors duration-200 ${
-                  isOpen 
+                  isActive 
                     ? "bg-green-600/20 text-green-400 border border-green-500/30" 
                     : "hover:bg-neutral-800 text-neutral-400 hover:text-neutral-300"
                 }`}
@@ -182,8 +176,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
             </div>
 
             {filteredPlatforms.map((platform, index) => {
-              const isOpen = isWindowOpen(platform.id);
-              const window = getOpenWindow(platform.id);
+              const isActive = isPlatformActive(platform.id);
               const itemKey = `platform-${index}`;
               const isExpanded = expandedItems.has(itemKey);
               
@@ -192,9 +185,9 @@ export const Sidebar: React.FC<SidebarProps> = ({
                   <div className="relative shrink-0 w-full transition-all duration-500">
                     <div
                       className={`rounded-lg cursor-pointer transition-all duration-500 flex items-center relative ${
-                        isOpen ? "bg-neutral-800" : "hover:bg-neutral-800"
+                        isActive ? "bg-neutral-800" : "hover:bg-neutral-800"
                       } w-full h-10 px-4 py-2`}
-                      onClick={() => onOpenWindow(platform)}
+                      onClick={() => onOpenPlatform(platform)}
                     >
                       <div className="flex items-center justify-center shrink-0">
                         <AIIcon platformId={platform.id} size={24} />
@@ -204,23 +197,23 @@ export const Sidebar: React.FC<SidebarProps> = ({
                           {platform.name}
                         </div>
                       </div>
-                      {isOpen && (
+                      {isActive && (
                         <div className="flex items-center justify-center shrink-0 transition-opacity duration-500 opacity-100 ml-2">
                           <Badge variant="secondary" className="text-xs bg-green-500/20 text-green-400 border-green-500/30">
-                            Open
+                            Active
                           </Badge>
                         </div>
                       )}
                     </div>
                   </div>
 
-                  {isOpen && window && (
+                  {isActive && (
                     <div className="flex flex-col gap-1 mb-2">
                       <div className="w-full pl-9 pr-1 py-[1px]">
                         <div className="h-10 w-full rounded-lg cursor-pointer transition-colors hover:bg-neutral-800 flex items-center px-3 py-1">
                           <div className="flex-1 min-w-0 flex items-center justify-between">
                             <div className="text-[14px] text-neutral-300 leading-[18px] truncate">
-                              {platform.name} Window
+                              {platform.name} - Embedded
                             </div>
                             <div className="flex gap-1">
                               <Button
@@ -228,18 +221,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                                 variant="ghost"
                                 onClick={(e) => {
                                   e.stopPropagation();
-                                  onFocusWindow(window.id);
-                                }}
-                                className="h-6 w-6 p-0 hover:bg-neutral-700"
-                              >
-                                <ExternalLink className="w-3 h-3" />
-                              </Button>
-                              <Button
-                                size="sm"
-                                variant="ghost"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  onCloseWindow(window.id);
+                                  onClosePlatform();
                                 }}
                                 className="h-6 w-6 p-0 hover:bg-red-600/20"
                               >

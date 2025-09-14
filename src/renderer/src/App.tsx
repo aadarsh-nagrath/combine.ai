@@ -9,7 +9,7 @@ import { AIPlatform, AIWindow, AppSettings } from '@/types';
 function App() {
   const [showSplash, setShowSplash] = useState(true);
   const [isLoading, setIsLoading] = useState(false);
-  const [openWindows, setOpenWindows] = useState<AIWindow[]>([]);
+  const [activePlatform, setActivePlatform] = useState<AIPlatform | null>(null);
   const [settings, setSettings] = useState<AppSettings>({
     theme: 'system',
     defaultWindowSize: { width: 1200, height: 800 },
@@ -19,20 +19,8 @@ function App() {
   const [settingsOpen, setSettingsOpen] = useState(false);
 
   useEffect(() => {
-    // Load open windows on startup
-    loadOpenWindows();
-    
     // Set up event listeners
     if (window.electronAPI) {
-      window.electronAPI.onWindowClosed((windowId: string) => {
-        setOpenWindows(prev => prev.filter(w => w.id !== windowId));
-      });
-
-      window.electronAPI.onMenuNewWindow(() => {
-        // Could implement a quick window picker here
-        console.log('New window requested from menu');
-      });
-
       window.electronAPI.onMenuSettings(() => {
         setSettingsOpen(true);
       });
@@ -40,61 +28,37 @@ function App() {
 
     return () => {
       if (window.electronAPI) {
-        window.electronAPI.removeAllListeners('window-closed');
-        window.electronAPI.removeAllListeners('menu-new-window');
         window.electronAPI.removeAllListeners('menu-settings');
       }
     };
   }, []);
 
-  const loadOpenWindows = async () => {
+  const handleOpenPlatform = async (platform: AIPlatform) => {
+    console.log('Opening platform:', platform.name, platform.url);
+    setIsLoading(true);
+    
+    // Use Electron's webContents to navigate the main window
     if (window.electronAPI) {
       try {
-        const windows = await window.electronAPI.getOpenWindows();
-        setOpenWindows(windows);
+        await window.electronAPI.navigateToURL(platform.url);
+        setActivePlatform(platform);
       } catch (error) {
-        console.error('Failed to load open windows:', error);
+        console.error('Failed to navigate:', error);
+        // Fallback to iframe
+        setActivePlatform(platform);
       }
+    } else {
+      setActivePlatform(platform);
     }
+    
+    setIsLoading(false);
   };
 
-  const handleOpenWindow = async (platform: AIPlatform) => {
+  const handleClosePlatform = () => {
+    setActivePlatform(null);
+    // Navigate back to the app's main page
     if (window.electronAPI) {
-      try {
-        setIsLoading(true);
-        const windowId = await window.electronAPI.openAIWindow(platform.name, platform.url);
-        const newWindow: AIWindow = {
-          id: windowId,
-          platform: platform.id,
-          url: platform.url,
-        };
-        setOpenWindows(prev => [...prev, newWindow]);
-      } catch (error) {
-        console.error('Failed to open window:', error);
-      } finally {
-        setIsLoading(false);
-      }
-    }
-  };
-
-  const handleFocusWindow = async (windowId: string) => {
-    if (window.electronAPI) {
-      try {
-        await window.electronAPI.focusWindow(windowId);
-      } catch (error) {
-        console.error('Failed to focus window:', error);
-      }
-    }
-  };
-
-  const handleCloseWindow = async (windowId: string) => {
-    if (window.electronAPI) {
-      try {
-        await window.electronAPI.closeAIWindow(windowId);
-        setOpenWindows(prev => prev.filter(w => w.id !== windowId));
-      } catch (error) {
-        console.error('Failed to close window:', error);
-      }
+      window.electronAPI.navigateToApp();
     }
   };
 
@@ -113,23 +77,61 @@ function App() {
 
   return (
     <div className="h-screen flex bg-slate-900">
-      {/* Sidebar */}
-      <Sidebar
-        platforms={aiPlatforms}
-        openWindows={openWindows}
-        onOpenWindow={handleOpenWindow}
-        onFocusWindow={handleFocusWindow}
-        onCloseWindow={handleCloseWindow}
-        isLoading={isLoading}
-      />
+      {/* Sidebar - Always visible with high z-index */}
+      <div className="relative z-50">
+        <Sidebar
+          platforms={aiPlatforms}
+          activePlatform={activePlatform}
+          onOpenPlatform={handleOpenPlatform}
+          onClosePlatform={handleClosePlatform}
+          isLoading={isLoading}
+        />
+      </div>
 
-      {/* Main Content */}
-      <MainContent
-        openWindows={openWindows}
-        onFocusWindow={handleFocusWindow}
-        onCloseWindow={handleCloseWindow}
-        onOpenSettings={handleOpenSettings}
-      />
+      {/* Main Content Area */}
+      <div className="flex-1 relative">
+        {activePlatform ? (
+          <div className="h-full w-full bg-white">
+            <div className="h-12 bg-gray-100 border-b flex items-center justify-between px-4">
+              <div className="flex items-center space-x-3">
+                <div className="w-6 h-6 bg-blue-500 rounded"></div>
+                <span className="font-medium text-gray-700">{activePlatform.name}</span>
+                <span className="text-sm text-gray-500">({activePlatform.url})</span>
+              </div>
+              <div className="flex items-center space-x-2">
+                <button 
+                  onClick={() => window.open(activePlatform.url, '_blank')}
+                  className="px-3 py-1 bg-blue-500 text-white rounded hover:bg-blue-600"
+                >
+                  Open in Browser
+                </button>
+                <button 
+                  onClick={handleClosePlatform}
+                  className="px-3 py-1 bg-red-500 text-white rounded hover:bg-red-600"
+                >
+                  Back to App
+                </button>
+              </div>
+            </div>
+            <div className="h-[calc(100%-3rem)] bg-gray-100 flex items-center justify-center">
+              <div className="text-center">
+                <div className="text-lg font-medium text-gray-700 mb-2">
+                  Loading {activePlatform.name}...
+                </div>
+                <div className="text-sm text-gray-500">
+                  The AI platform should load in the main window above
+                </div>
+              </div>
+            </div>
+          </div>
+        ) : (
+          <MainContent
+            platforms={aiPlatforms}
+            onOpenPlatform={handleOpenPlatform}
+            onOpenSettings={handleOpenSettings}
+          />
+        )}
+      </div>
 
       {/* Settings Dialog */}
       <SettingsDialog
