@@ -40,6 +40,12 @@ contextBridge.exposeInMainWorld('electronAPI', {
   removeAllListeners: (channel: string) => {
     ipcRenderer.removeAllListeners(channel);
   },
+
+  // Open URL in system browser (for OAuth that blocks embeds)
+  openExternal: (url: string) => ipcRenderer.invoke('open-external', url),
+
+  // Open auth popup window that shares the same session
+  openAuthPopup: (url: string) => ipcRenderer.invoke('open-auth-popup', url),
 });
 
 // Type definitions for the exposed API
@@ -56,6 +62,8 @@ declare global {
       onMenuNewWindow: (callback: () => void) => void;
       onMenuSettings: (callback: () => void) => void;
       removeAllListeners: (channel: string) => void;
+      openExternal: (url: string) => Promise<void>;
+      openAuthPopup: (url: string) => Promise<void>;
     };
   }
 }

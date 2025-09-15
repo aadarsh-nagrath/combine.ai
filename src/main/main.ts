@@ -1,4 +1,4 @@
-import { app, BrowserWindow, ipcMain, Menu, shell } from 'electron';
+import { app, BrowserWindow, ipcMain, Menu, shell, session } from 'electron';
 import * as path from 'path';
 import { isDev } from './utils';
 
@@ -23,6 +23,7 @@ class AIWrapperApp {
       this.createMainWindow();
       this.setupMenu();
       this.setupIPC();
+      this.setupAuthDetours();
     });
 
     app.on('window-all-closed', () => {
@@ -36,6 +37,10 @@ class AIWrapperApp {
         this.createMainWindow();
       }
     });
+  }
+
+  private setupAuthDetours(): void {
+    // No-op for now; inline intercepts caused session mismatch for some providers
   }
 
   private createMainWindow(): void {
@@ -186,6 +191,43 @@ class AIWrapperApp {
           this.mainWindow.loadFile(path.join(__dirname, '../renderer/index.html'));
         }
       }
+    });
+
+    // Open external URLs in system browser (OAuth fallback)
+    ipcMain.handle('open-external', async (_event, url: string) => {
+      await shell.openExternal(url);
+    });
+
+    // Child auth popup that shares partition with webview
+    ipcMain.handle('open-auth-popup', async (_event, url: string) => {
+      const authSession = session.fromPartition('persist:ai-platforms');
+      const popup = new BrowserWindow({
+        width: 700,
+        height: 800,
+        parent: this.mainWindow ?? undefined,
+        modal: false,
+        show: true,
+        webPreferences: {
+          nodeIntegration: false,
+          contextIsolation: true,
+          session: authSession,
+        },
+      });
+
+      popup.webContents.setWindowOpenHandler(({ url }) => {
+        // Keep auth in same popup
+        popup.loadURL(url);
+        return { action: 'deny' };
+      });
+
+      popup.loadURL(url);
+
+      // Auto-close on redirect back to app domains (heuristic)
+      popup.webContents.on('will-redirect', (_e, targetUrl) => {
+        if (!/accounts\.google\.com|oauth2|gsi/.test(targetUrl)) {
+          popup.close();
+        }
+      });
     });
   }
 
